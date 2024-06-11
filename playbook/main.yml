@@ -1,0 +1,70 @@
+---
+- hosts: all
+  become: true
+  become_user: root
+  vars:
+    user: "root"
+    password: "toor"
+  tasks:
+
+    - name: Disable password-based authentication in SSH
+      become: yes
+      become_user: root
+      lineinfile:
+        path: "/etc/ssh/sshd_config"
+        regexp: '^(.*)PasswordAuthentication(.*)$'
+        line: 'PasswordAuthentication no'
+
+    - name: Create user brickdev with password
+      become: yes
+      become_user: root
+      user:
+        name: "brickdev"
+        password: "{{ 'pass' | password_hash('sha512') }}"
+
+    - name: Create user cloudru, SSH directory, and transfer SSH key
+      become: yes
+      become_user: root
+      file:
+        path: /home/cloudru/.ssh
+        state: directory
+        owner: cloudru
+        group: cloudru
+        mode: 0700
+
+    - name: Ensure authorized_keys directory exists
+      become_user: root
+      file:
+        path: "~/.ssh"
+        state: directory
+        mode: "0700"
+
+    - name: Transfer public key to the target host
+      become_user: root
+      copy:
+        content: "{{ lookup('file', '/home/kos/test_devops_junior_brick/playbook/files/cloudru.key.pub') }}"
+        dest: "/home/cloudru/.ssh/authorized_keys"
+        mode: 0600
+
+    - name: Disable root authentication in SSH
+      become: yes
+      become_user: root
+      lineinfile:
+        path: "/etc/ssh/sshd_config"
+        regexp: '^(.*)PermitRootLogin(.*)$'
+        line: 'PermitRootLogin no'
+
+    - name: Enable pub key authentication in SSH for root
+      become: yes
+      become_user: root
+      lineinfile:
+        path: "/etc/ssh/sshd_config"
+        regexp: '^(.*)PubkeyAuthentication(.*)$'
+        line: 'PubkeyAuthentication yes'
+
+    - name: Restart SSH
+      become: yes
+      become_user: root
+      service:
+        name: ssh
+        state: restarted
