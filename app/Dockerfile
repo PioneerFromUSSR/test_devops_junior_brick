@@ -13,6 +13,10 @@ RUN npm install
 
 COPY --chown=node:node . .
 
+USER root
+
+RUN apk --no-cache add curl
+
 EXPOSE 8000
 
 CMD [ "node", "app.js" ]
